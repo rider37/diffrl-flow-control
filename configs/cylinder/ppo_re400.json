@@ -1,0 +1,26 @@
+{
+  "actor_hidden_dims": [
+    512,
+    512
+  ],
+  "critic_hidden_dims": [
+    32,
+    32
+  ],
+  "activation": "relu",
+  "lr": 0.001,
+  "gamma": 0.99,
+  "gae_lambda": 0.97,
+  "clip_eps": 0.2,
+  "n_epochs": 25,
+  "subsample_ratio": 0.2,
+  "ent_coef": 0.01,
+  "vf_coef": 0.5,
+  "max_grad_norm": 0.5,
+  "episodes_per_update": 20,
+  "episode_length": 80,
+  "n_updates": 100,
+  "log_every": 1,
+  "save_every": 10,
+  "snapshot_every": 10
+}

@@ -1,152 +1,100 @@
 # diffrl-flow-control
 
-Code for the article
+Code for *Sample-efficient reinforcement learning for active flow control via differentiable flow simulation* (Computer Physics Communications, submitted).
 
-> J. Kang, I. Kim, S. Lee, *Sample-efficient reinforcement learning for active
-> flow control via differentiable flow simulation*, submitted to Computer
-> Physics Communications.
+It contains a differentiable incompressible Navier–Stokes solver written in JAX and two active-flow-control problems. Each problem is solved with SHAC (policy gradients through the solver) and with PPO:
 
-The repository contains a differentiable incompressible Navier–Stokes solver
-written in JAX (`src/jax_cfd`), the two control benchmarks used in the article
-(cylinder drag reduction at Re = 100–500 and Rayleigh–Bénard convection at
-Ra = 10⁴–10⁶), the SHAC and PPO training code, the held-out evaluation
-scripts, and the scripts that produce every table and figure of the article.
+- drag reduction of a cylinder with synthetic jets, Re = 100, 200, 400, 500;
+- control of Rayleigh–Bénard convection through the bottom-wall temperature, Ra = 1e4, 1e5, 1e6.
 
-Trained policies, training histories and evaluation outputs are archived
-separately on Zenodo (DOI: [10.5281/zenodo.23051277](https://doi.org/10.5281/zenodo.23051277)).
-
-## Installation
-
-Tested with Python 3.12, JAX/jaxlib 0.9.2 (CUDA 12) and NumPy 1.26 on NVIDIA
-RTX 3090 and RTX 4090 GPUs.
-
-```bash
-git clone https://github.com/rider37/diffrl-flow-control.git
-cd diffrl-flow-control
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt      # exact environment of the article
-pip install -e .                     # installs the jax_cfd package
-pytest                               # solver unit tests
-```
-
-For a CPU-only installation replace `jax[cuda12]` by `jax` in
-`requirements.txt`.  All statistics and figures can be regenerated on a CPU;
-training and policy evaluation need a GPU in practice.
-
-## Data
-
-Download the Zenodo archive and extract it in the repository root:
-
-```bash
-tar -xzf cpc_data_v1.0.tar.gz        # creates experiments/*/output_*/ and results/
-```
-
-The archive holds, for every (algorithm, seed, Re or Ra) run of the article,
-the final policy checkpoint and the training history (`history.json`), plus
-the evaluation outputs in `results/`.  `MANIFEST.tsv` in the archive lists
-every file with its SHA-256 checksum.
+The repository holds only the code used in the paper. Trained policies, training histories and all evaluated results are in the Zenodo record [10.5281/zenodo.23051277](https://doi.org/10.5281/zenodo.23051277).
 
 ## Layout
 
-| Path | Content |
+```
+src/diffrl_flow_control/
+  solver/             MAC-grid incompressible solver (RK3, MUSCL advection, DCT/FFT pressure,
+                      ghost-cell immersed boundary, Boussinesq temperature)
+  cylinder/           environment, SHAC, PPO, held-out initial conditions
+  rayleigh_benard/    environment, SHAC, PPO, held-out initial conditions
+  configs.py          loads configs/<problem>/<name>.json
+configs/
+  cylinder/           env_re*.json, shac_re*.json, ppo_re*.json
+  rayleigh_benard/    env_ra*.json, shac_ra*.json, ppo_ra*.json,
+                      ppo_obsnorm_ra1e6.json, shac_horizon{20,40,80,160}_ra1e4.json
+scripts/
+  train.py            training entry point
+  evaluate/           held-out evaluation of the trained policies (Tables 2, 4)
+  analysis/           statistics, gradient diagnostics and figure data
+  checks/             solver validation and verification (Section 2.3, appendices, supplement)
+figures/              one script per manuscript figure
+tests/                solver and environment tests
+```
+
+## Installation
+
+Python 3.11 or newer. The results were produced with Python 3.12, JAX 0.9.2 and CUDA 12 on NVIDIA GPUs.
+
+```bash
+pip install -r requirements.txt
+pip install -e .
+pytest            # 16 tests, CPU is enough
+```
+
+## Data
+
+Download the data archive from the Zenodo record and extract it at the repository root. This creates
+
+```
+runs/<problem>/<algorithm>_<case>_s<seed>/   history.json and checkpoints/final.npz
+results/evaluation/     held-out evaluations
+results/statistics/     statistics reported in the tables and text
+results/diagnostics/    gradient-variance and AD–FD diagnostics
+results/checks/         validation and verification outputs
+results/figure_data/    arrays plotted in the figures
+```
+
+`RENAMES.tsv` in the record maps each file to the name it had during development.
+
+## Training
+
+```bash
+python scripts/train.py <problem> <algorithm> <case> --seed <seed>
+```
+
+| argument | values |
 |---|---|
-| `src/jax_cfd/` | Solver: MAC grid, RK3 time stepping, pressure projection, immersed boundary, Boussinesq buoyancy, control environments |
-| `cases/`, `experiments/` | Benchmark configurations and SHAC/PPO training loops for the cylinder (`afc_cylinder`) and Rayleigh–Bénard (`rb_control`) problems |
-| `configs/` | Configurations of the published SHAC runs, copied from their training histories |
-| `scripts/` | Training launchers, held-out evaluation, statistics and verification scripts |
-| `figures/` | Figure scripts; each writes its PDF into `figures/` |
-| `tests/` | Unit tests |
+| problem | `cylinder`, `rayleigh_benard` |
+| algorithm | `shac`, `ppo`; for Rayleigh–Bénard also `ppo_obsnorm` (Ra = 1e6) and `shac_horizon20/40/80/160` (Ra = 1e4) |
+| case | `re100`, `re200`, `re400`, `re500`; `ra1e4`, `ra1e5`, `ra1e6` |
+| seed | 42, 123, 456, 517, 1223 were used in the paper |
 
-Training seeds are 42, 123, 456, 517 and 1223; held-out initial conditions
-use IC seeds 100–104 and are never used in training.
+Example: `python scripts/train.py rayleigh_benard shac ra1e5 --seed 42` writes `runs/rayleigh_benard/shac_ra1e5_s42/`.
 
-## Reproducing the article
+## Reproducing the paper
 
-All commands are run from the repository root.
-
-### Training (GPU)
-
-| Runs | Command |
-|---|---|
-| Cylinder PPO, Re = 100/200/400 | `python scripts/retrain_re100_ppo_768_eps075.py [seeds]` (likewise `re200`, `re400_ppo_1280`) |
-| Cylinder PPO, Re = 500 | `python scripts/retrain_re500_ppo_velocity.py --seed 42` |
-| Cylinder SHAC | `python scripts/train_wm_shac_cyl.py --Re 100 --seed 42` |
-| RB PPO, Ra = 10⁴ | `python scripts/rb_ra1e4_pilot.py [seeds]` |
-| RB PPO, Ra = 10⁵, 10⁶ | `python scripts/rb_ppo_expand.py --ra 1e5 --seed 42` |
-| RB SHAC, Ra = 10⁴ | `python scripts/train_rb1e4_shac1000.py --seed 42` |
-| RB SHAC, Ra = 10⁵, 10⁶ | `python scripts/train_wm_shac_rb.py --ra 1e5 --seed 42` |
-| PPO with observation normalisation, Ra = 10⁶ (§5.4) | `python scripts/obsnorm_ppo_ra1e6_launch.py [seeds]` |
-
-Launchers without an explicit seed run all five seeds.  Outputs go to
-`experiments/<problem>/output_*/`, with the same directory names as in the
-Zenodo archive.
-
-### Held-out evaluation (GPU)
-
-| Output (`results/`) | Script | Content |
+| paper item | script | output |
 |---|---|---|
-| `cyl_heldout.json` | `scripts/eval_cyl_heldout.py` | controlled drag per (seed, IC), all cylinder policies |
-| `rb_heldout.json` | `scripts/eval_rb_heldout.py` | controlled Nu per (seed, IC), all RB policies |
-| `cyl_heldout_matched_baselines.json` | `scripts/cyl_matched_baseline.py` | uncontrolled drag per IC over the same window |
-| `rb_heldout_matched_baselines.json` | `scripts/rb_matched_baseline.py` | uncontrolled Nu per IC over the same window |
+| Table 2, cylinder held-out | `scripts/evaluate/cylinder_heldout.py`, `cylinder_uncontrolled.py` | `results/evaluation/cylinder_*.json` |
+| Table 4, RB held-out | `scripts/evaluate/rayleigh_benard_heldout.py`, `rayleigh_benard_uncontrolled.py` | `results/evaluation/rayleigh_benard_*.json` |
+| Tables 2 and 4, statistics | `scripts/analysis/heldout_statistics.py`, `uncontrolled_variability.py` | `results/statistics/` |
+| Section 5.4 and Table A.2, observation-normalised PPO (Ra = 1e6) | `scripts/evaluate/rayleigh_benard_heldout_obsnorm.py`, `scripts/analysis/observation_scales.py` | `results/evaluation/`, `results/statistics/` |
+| Section 5.1, cylinder forces | `scripts/analysis/cylinder_force_series.py`, `cylinder_force_spectra.py` | `results/statistics/` |
+| Section 5.2, gradient variance | `scripts/analysis/gradient_variance.py`, `gradient_variance_horizon.py`, `ppo_gradient_variance.py` | `results/diagnostics/` |
+| Section 5.4, PPO saturation | `scripts/analysis/ppo_saturation.py` | `results/statistics/ppo_saturation.json` |
+| Appendix D, time to target | `scripts/analysis/training_cost.py` | `results/statistics/training_cost.json` |
+| Appendix F, AD–FD | `scripts/analysis/ad_fd_gradients.py`, `ad_fd_step_sweep.py` | `results/diagnostics/ad_fd_*.json` |
+| validation and verification checks (Section 2.3, Sections 5.1–5.4, Appendix C, Supplementary Material) | `scripts/checks/*.py` | `results/checks/` |
+| Figs. 1–2 background | flow snapshots saved by `scripts/train.py` | `results/figure_data/fig01_background.npz`, `fig02_background.npz` |
+| Figs. 5–8 data | `scripts/analysis/cylinder_actuation.py`, `rayleigh_benard_fields.py`, `wall_pattern.py`, `rayleigh_benard_heat_flux.py` | `results/figure_data/` |
+| Figs. 1–9, F.1 | `figures/fig*.py` | `figures/fig*.pdf` |
 
-Both evaluation scripts take `--Re`/`--ra`, `--algo` and `--seeds` to run a
-subset.  They store controlled values only; every reduction in the article is
-computed from these files by `scripts/heldout_matched_stats.py`.
+The scripts in `scripts/` read `runs/` and `results/` and write to `results/`; the figure scripts read `results/` and write to `figures/`. Each item can therefore be reproduced on its own from the downloaded data.
 
-### Tables and statistics (CPU, seconds)
+## Citation
 
-| Item | Script | Output |
-|---|---|---|
-| Tables 2 and 4, Welch intervals, Fig. 9b data | `scripts/heldout_matched_stats.py` | `heldout_matched_stats.json`, `figure_data/fig9b_rb_reductions.json` |
-| Uncontrolled variability windows (§5.2) | `scripts/uncontrolled_cv_windows.py` | `uncontrolled_cv_windows.json` |
-| Table D.1, training cost (§4) | `scripts/time_to_target_wm.py` | `time_to_target_wm.json` |
-| Table A.2, observation scales | `scripts/baseline_obs_stats.py` (GPU) | `baseline_obs_stats.json` |
-| Table S1, force spectra | `scripts/cyl_drag_spectrum_stats.py` | `cyl_drag_spectrum_stats.json` |
-| PPO pre-tanh saturation (§5.4) | `scripts/saturation_5seed.py` (GPU) | `saturation_5seed.json` |
-| PPO with observation normalisation (§5.4) | `scripts/v12_obsnorm_ppo_ra1e6_final.py` (GPU) | `verification/v12_obsnorm_ppo_ra1e6_final.json` |
-| Gradient variance and PPO critic (§5.2) | `scripts/grad_variance_mechanism_wm.py`, `grad_variance_ppo.py`, `grad_variance_horizon_wm.py` (GPU) | `grad_variance_wm/`, `grad_variance/` |
-| AD–FD gradient check (Appendix F) | `scripts/analyze_gradient_quality.py`, `ad_fd_eps_sweep.py` (GPU) | `gradient_quality/` |
-
-### Figures (CPU)
-
-| Figure | Script | Input |
-|---|---|---|
-| 1, 2 | `figures/make_fig1_schematics.py` | `results/figure_data/fig{1,2}_background_*.npz` |
-| 3, 4 | `figures/make_efficiency_split.py` | training histories |
-| 5 | `figures/plot_fig_cyl_actuation.py` | `action_both_vs_re.npz` from `scripts/measure_action_both.py` |
-| 6 | `figures/make_fig6_temp_grid.py` | `rb_timeavg_ra*.npz` from `scripts/render_rb_timeavg_wm.py` |
-| 7 | `figures/replot_fig6_policy.py` | `policy_physics_wm/` from `scripts/analyze_policy_physics_wm.py` |
-| 8 | `figures/replot_rb_spectrum_wm.py` | `fig7_rb_spectrum_data.npz` from `scripts/rb_spectrum_compare_wm.py` |
-| 9 | `figures/fig_mechanism_wm.py` | `grad_variance_wm/`, `figure_data/fig9b_rb_reductions.json` |
-| F.1 | `figures/make_figF8_gradient_quality.py` | `gradient_quality/` |
-
-With the Zenodo data in place every figure script reproduces the published
-figure exactly.
-
-### Solver verification (GPU)
-
-`scripts/cyl_re100_validation.py` gives the uncontrolled Re = 100 drag,
-Strouhal number and jet momentum coefficient of Section 2.3, and
-`scripts/validate_de_vahl_davis.py` compares the buoyancy solver with the de
-Vahl Davis benchmark.  The scripts `scripts/v01_*.py` to `scripts/v12_*.py`
-produce the numerical checks quoted in the article and the supplementary
-material (single versus double precision, CFL and divergence, memory and
-wall-clock time, convective onset, Lyapunov exponents, AD–FD gradients along a
-trained trajectory, baseline sensitivity, horizon sweep, action power, and the
-final-checkpoint observation-normalisation evaluation).  Their outputs are in
-`results/verification/`.
-
-## Notes
-
-- `scripts/rb_eval_common.py` and `scripts/cyl_eval_common.py` hold the
-  held-out initial conditions, checkpoint loaders and rollout used by all
-  evaluation scripts.
-- All cylinder runs use the immersed-boundary interface width
-  `ibm_eps_factor = 0.75`, passed by the launchers and stored in
-  `configs/cyl_re*.json`; `cases/cylinder_afc.make_env_config` falls back to
-  the solver default when it is not given.
+See `CITATION.cff`.
 
 ## License
 
-MIT (see `LICENSE`).
+MIT

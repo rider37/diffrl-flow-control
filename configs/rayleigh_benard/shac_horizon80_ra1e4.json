@@ -1,0 +1,37 @@
+{
+  "horizon": 80,
+  "action_interval": 150,
+  "segment_length": 80,
+  "gamma": 0.99,
+  "action_penalty": 0.0,
+  "actor_lr": 0.0003,
+  "critic_lr": 0.001,
+  "max_grad_norm": 5.0,
+  "hidden_dims": [
+    64,
+    64
+  ],
+  "n_epochs": 50,
+  "critic_update_epochs": 5,
+  "reset_every": 10,
+  "log_every": 5,
+  "save_every": 50,
+  "snapshot_every": 50,
+  "ic_pool_seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14
+  ]
+}

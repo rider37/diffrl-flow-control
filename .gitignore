@@ -4,9 +4,8 @@ __pycache__/
 .venv/
 venv/
 # data record (download from Zenodo; see README)
-experiments/*/output_*/
+runs/
 results/
 # regenerated figures
 figures/*.pdf
 figures/*.png
-figures/fig/

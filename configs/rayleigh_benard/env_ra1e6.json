@@ -1,0 +1,20 @@
+{
+  "Ra": 1000000.0,
+  "Pr": 0.7,
+  "Lx": 6.283185307179586,
+  "Ly": 2.0,
+  "Nx": 256,
+  "Ny": 192,
+  "T_hot": 1.0,
+  "T_cold": 0.0,
+  "perturb_amp": 0.05,
+  "n_segments": 12,
+  "amplitude": 0.75,
+  "dt": 0.0015,
+  "action_interval": 300,
+  "episode_actions": 400,
+  "warmup_steps": 15000,
+  "baseline_steps": 5000,
+  "n_probes_x": 128,
+  "n_probes_y": 24
+}

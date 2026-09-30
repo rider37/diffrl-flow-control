@@ -1,10 +1,6 @@
 # Environment used for the published results (Python 3.12, CUDA 12).
 jax[cuda12]==0.9.2
-jaxlib==0.9.2
-numpy>=1.26,<2.0
-scipy>=1.11
-optax>=0.2
-chex>=0.1
-h5py>=3.8
-matplotlib>=3.8
+numpy==2.3.3
+scipy==1.16.2
+matplotlib==3.10.6
 pytest>=7.0

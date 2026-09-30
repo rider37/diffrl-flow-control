@@ -1,0 +1,29 @@
+{
+  "horizon": 48,
+  "action_interval": 50,
+  "segment_length": 10,
+  "gamma": 0.99,
+  "cl_weight": 0.2,
+  "action_penalty": 0.0,
+  "actor_lr": 0.0003,
+  "critic_lr": 0.001,
+  "max_grad_norm": 5.0,
+  "hidden_dims": [
+    512,
+    512
+  ],
+  "n_epochs": 1000,
+  "critic_update_epochs": 5,
+  "reset_every": 50,
+  "log_every": 5,
+  "save_every": 100,
+  "snapshot_every": 200,
+  "actor_hidden_dims": [
+    512,
+    512
+  ],
+  "critic_hidden_dims": [
+    32,
+    32
+  ]
+}
