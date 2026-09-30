@@ -15,6 +15,10 @@ authors:
     given-names: Sangseung
     affiliation: "Department of Mechanical Engineering, Inha University"
 repository-code: "https://github.com/rider37/diffrl-flow-control"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.23051277"
+    description: "Zenodo record: data and code snapshot"
 keywords:
   - active flow control
   - differentiable simulation

@@ -13,7 +13,7 @@ Ra = 10⁴–10⁶), the SHAC and PPO training code, the held-out evaluation
 scripts, and the scripts that produce every table and figure of the article.
 
 Trained policies, training histories and evaluation outputs are archived
-separately on Zenodo (DOI: 10.5281/zenodo.XXXXXXX).
+separately on Zenodo (DOI: [10.5281/zenodo.23051277](https://doi.org/10.5281/zenodo.23051277)).
 
 ## Installation
 
