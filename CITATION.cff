@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the article below."
+title: "diffrl-flow-control: SHAC and PPO active flow control in a differentiable Navier-Stokes solver"
+type: software
+version: 1.0.0
+license: MIT
+authors:
+  - family-names: Kang
+    given-names: Jiwon
+    affiliation: "Department of Mechanical Engineering, Inha University"
+  - family-names: Kim
+    given-names: Innyoung
+    affiliation: "Department of Aerospace Engineering, Sejong University"
+  - family-names: Lee
+    given-names: Sangseung
+    affiliation: "Department of Mechanical Engineering, Inha University"
+repository-code: "https://github.com/rider37/diffrl-flow-control"
+keywords:
+  - active flow control
+  - differentiable simulation
+  - reinforcement learning
+  - JAX
+  - Rayleigh-Benard convection
+preferred-citation:
+  type: article
+  title: "Sample-efficient reinforcement learning for active flow control via differentiable flow simulation"
+  authors:
+    - family-names: Kang
+      given-names: Jiwon
+    - family-names: Kim
+      given-names: Innyoung
+    - family-names: Lee
+      given-names: Sangseung
+  journal: "Computer Physics Communications"
+  status: submitted

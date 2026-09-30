@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+venv/
+# data record (download from Zenodo; see README)
+experiments/*/output_*/
+results/
+# regenerated figures
+figures/*.pdf
+figures/*.png
+figures/fig/

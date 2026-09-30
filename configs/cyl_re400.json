@@ -1,0 +1,68 @@
+{
+ "env_config": {
+  "Re": 400.0,
+  "Lx": 22.0,
+  "Ly": 4.1,
+  "Nx": 1280.0,
+  "Ny": 240.0,
+  "R": 0.5,
+  "cx": 2.0,
+  "cy": 2.0,
+  "U_inf": 1.0,
+  "n_ibm_pts": 128.0,
+  "inlet_type": "parabolic",
+  "Um": 1.5,
+  "wall_type": "wall_no_slip",
+  "n_jets": 2.0,
+  "jet_thetas": [
+   1.5707963267948966,
+   4.71238898038469
+  ],
+  "jet_width": 0.15,
+  "Q_max": 0.5,
+  "dt": 0.002,
+  "action_interval": 125.0,
+  "episode_actions": 80.0,
+  "warmup_steps": 75000.0,
+  "baseline_steps": 25000.0,
+  "ema_alpha": 0.1,
+  "ibm_eps_factor": 0.75,
+  "probe_layout": "rabault2019",
+  "obs_type": "velocity",
+  "cl_weight": 0.2,
+  "jet_method": "surface_bc",
+  "soft_reset_prob": 0.8
+ },
+ "fans_config": {
+  "horizon": 48.0,
+  "action_interval": 50.0,
+  "segment_length": 10.0,
+  "gamma": 0.99,
+  "cl_weight": 0.1,
+  "action_penalty": 0.0,
+  "actor_lr": 0.0003,
+  "critic_lr": 0.001,
+  "max_grad_norm": 5.0,
+  "hidden_dims": [
+   256.0,
+   256.0
+  ],
+  "n_epochs": 1000.0,
+  "critic_update_epochs": 5.0,
+  "reset_every": 50.0,
+  "seed": 42.0,
+  "log_every": 5.0,
+  "save_every": 100.0,
+  "snapshot_every": 200.0,
+  "output_dir": "experiments/afc_cylinder/output_relu_shac_re400_1280x240_s42",
+  "actor_hidden_dims": [
+   256.0,
+   256.0
+  ],
+  "critic_hidden_dims": [
+   256.0,
+   256.0
+  ]
+ },
+ "source": "cyl_shac_relu_pkg/experiments/afc_cylinder/output_relu_shac_re400_1280x240_s42/history.json"
+}
