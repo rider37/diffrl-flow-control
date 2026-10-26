@@ -24,7 +24,6 @@ from diffrl_flow_control.rayleigh_benard.ppo import (
     init_adam,
     adam_update,
     save_flow_snapshot,
-    save_flow_image,
 )
 from diffrl_flow_control.rayleigh_benard.shac import (
     make_heater_step_fn, make_rb_get_obs_fn, make_compute_nu_fn,
@@ -52,86 +51,6 @@ def save_params(params, name, output_dir):
     path = os.path.join(ckpt_dir, f'{name}.npz')
     np.savez(path, **flat_actor, **flat_critic)
     return path
-
-
-def save_training_curves(history, output_dir):
-    """Generate training curve plots."""
-    try:
-        import matplotlib
-        matplotlib.use('Agg')
-        import matplotlib.pyplot as plt
-    except ImportError:
-        return
-
-    fig, axes = plt.subplots(3, 2, figsize=(14, 12))
-    epochs = history['epoch']
-
-    # Nu mean
-    ax = axes[0, 0]
-    ax.plot(epochs, history['nu_mean'], 'b-', lw=1.5, label='Nu (mean)')
-    ax.axhline(history['nu_baseline'], color='r', ls='--', lw=1, label='Nu baseline')
-    if history.get('nu_min'):
-        ax.fill_between(epochs, history['nu_min'], history['nu_max'],
-                        alpha=0.2, color='b')
-    ax.set_xlabel('Epoch')
-    ax.set_ylabel('Nu')
-    ax.set_title('Nusselt Number')
-    ax.legend()
-    ax.grid(True, alpha=0.3)
-
-    # Actor loss
-    ax = axes[0, 1]
-    ax.plot(epochs, history['actor_loss'], 'r-', lw=1.5)
-    ax.set_xlabel('Epoch')
-    ax.set_ylabel('Actor Loss')
-    ax.set_title('Actor Loss')
-    ax.grid(True, alpha=0.3)
-
-    # Critic loss
-    ax = axes[1, 0]
-    ax.plot(epochs, history['critic_loss'], 'g-', lw=1.5)
-    ax.set_xlabel('Epoch')
-    ax.set_ylabel('Critic Loss')
-    ax.set_title('Critic Loss')
-    ax.grid(True, alpha=0.3)
-
-    # Gradient norm
-    ax = axes[1, 1]
-    ax.semilogy(epochs, history['grad_norm'], 'k-', lw=1.5)
-    ax.set_xlabel('Epoch')
-    ax.set_ylabel('|grad|')
-    ax.set_title('Actor Gradient Norm')
-    ax.grid(True, alpha=0.3)
-
-    # Actions (per-segment mean magnitude)
-    ax = axes[2, 0]
-    ax.plot(epochs, history['action_mean'], 'b-', lw=1.5, label='|a| mean')
-    if history.get('action_std'):
-        ax.fill_between(
-            epochs,
-            np.array(history['action_mean']) - np.array(history['action_std']),
-            np.array(history['action_mean']) + np.array(history['action_std']),
-            alpha=0.2,
-        )
-    ax.set_xlabel('Epoch')
-    ax.set_ylabel('|Action|')
-    ax.set_title('Action Magnitude')
-    ax.legend()
-    ax.grid(True, alpha=0.3)
-
-    # Discounted return
-    ax = axes[2, 1]
-    ax.plot(epochs, history['return'], 'purple', lw=1.5)
-    ax.set_xlabel('Epoch')
-    ax.set_ylabel('Return')
-    ax.set_title('Discounted Return')
-    ax.grid(True, alpha=0.3)
-
-    plt.suptitle('SHAC Training Curves (RB Control)', fontsize=14, fontweight='bold')
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'training_curves.png'),
-                dpi=150, bbox_inches='tight')
-    plt.close(fig)
 
 
 def _save_history(history, output_dir):
@@ -185,7 +104,6 @@ def train(env_cfg, shac_cfg):
 
     # Save baseline flow
     save_flow_snapshot(state, env.grid, label=-1, output_dir=output_dir)
-    save_flow_image(state, env.grid, label=-1, output_dir=output_dir)
 
     # ── 2. SHAC step function (wraps CFD + action→T_segments) ─────────
     shac_step_fn = make_heater_step_fn(
@@ -417,11 +335,10 @@ def train(env_cfg, shac_cfg):
             np.savez(os.path.join(ckpt_dir, 'best.npz'),
                      epoch=epoch, nu=nu_mean, **flat_actor, **flat_critic)
 
-        # ── Save flow snapshots + images ──
+        # ── Save flow snapshots ──
         if epoch % snapshot_every == 0 or epoch == shac_cfg['n_epochs'] - 1:
             save_flow_snapshot(state, env.grid, epoch, output_dir)
-            save_flow_image(state, env.grid, epoch, output_dir)
-            print(f'  [Saved flow snapshot + image: epoch {epoch}]')
+            print(f'  [Saved flow snapshot: epoch {epoch}]')
 
         # ── Save checkpoint ──
         if (epoch + 1) % shac_cfg['save_every'] == 0:
@@ -444,8 +361,6 @@ def train(env_cfg, shac_cfg):
 
     _save_history(history, output_dir)
     save_params(params, 'final', output_dir)
-    save_training_curves(history, output_dir)
-    print(f'  Training curves: {output_dir}/training_curves.png')
     print(f'  History:         {output_dir}/history.json')
 
     return params, history

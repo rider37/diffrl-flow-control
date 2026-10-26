@@ -6,6 +6,3 @@ venv/
 # data record (download from Zenodo; see README)
 runs/
 results/
-# regenerated figures
-figures/*.pdf
-figures/*.png

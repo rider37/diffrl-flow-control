@@ -1,9 +1,9 @@
-"""Wall-temperature patterns of the trained RB policies (Fig. 7).
+"""Wall-temperature patterns of the trained RB policies (Fig. 9).
 
 Mean wall temperature per heater segment of the final SHAC policy (training seed 42)
 at each Ra, and the spatial power spectrum of the time-averaged wall pattern.
 Usage:  python scripts/analysis/wall_pattern.py
-Writes results/diagnostics/wall_pattern.json (input of figures/fig07_wall_pattern.py).
+Writes results/diagnostics/wall_pattern.json.
 """
 import os
 import sys
@@ -164,62 +164,6 @@ def analyze_cylinder_policy(checkpoint_dir, re_val, label):
     return None
 
 
-def make_plots(rb_results, cyl_results, output_dir):
-    """Generate Fig 8: policy interpretation plots."""
-    try:
-        import matplotlib
-        matplotlib.use('Agg')
-        import matplotlib.pyplot as plt
-    except ImportError:
-        print('[WARN] matplotlib not available')
-        return
-
-    rb_results = [r for r in rb_results if r is not None]
-    n_rb = len(rb_results)
-
-    fig, axes = plt.subplots(2, max(n_rb, 1), figsize=(5 * max(n_rb, 1), 8))
-    if n_rb == 1:
-        axes = axes[:, np.newaxis]
-
-    # ── Row 1: Mean wall temperature patterns ──
-    for i, r in enumerate(rb_results):
-        ax = axes[0, i]
-        n_seg = len(r['mean_T_wall'])
-        x = np.arange(n_seg)
-        ax.bar(x, r['mean_T_wall'], color='#FF5722', alpha=0.7,
-               edgecolor='black', lw=0.5)
-        ax.axhline(1.0, color='gray', ls='--', lw=1, label='$T_{hot}$')
-        ax.set_xlabel('Segment', fontsize=11)
-        ax.set_ylabel('Mean $T_{wall}$', fontsize=11)
-        ra_exp = int(np.log10(r['Ra']))
-        ax.set_title(f'Ra=$10^{ra_exp}$, Nu={r["mean_nu"]:.2f} '
-                     f'(-{(1 - r["mean_nu"]/r["nu_baseline"])*100:.1f}%)',
-                     fontsize=11)
-        ax.set_ylim(0, 2.0)
-        ax.legend(fontsize=9)
-        ax.grid(True, alpha=0.3)
-
-    # ── Row 2: FFT power spectrum ──
-    for i, r in enumerate(rb_results):
-        ax = axes[1, i]
-        power = np.array(r['fft_power'])
-        k = np.arange(len(power))
-        ax.bar(k[1:], power[1:], color='#2196F3', alpha=0.7,
-               edgecolor='black', lw=0.5)
-        ax.set_xlabel('Wavenumber k', fontsize=11)
-        ax.set_ylabel('FFT Power', fontsize=11)
-        ax.set_title(f'Dominant k={r["dominant_wavenumber"]}', fontsize=11)
-        ax.grid(True, alpha=0.3)
-
-    plt.suptitle('Learned Policy: Wall Temperature Patterns & Spatial FFT',
-                 fontsize=14, fontweight='bold')
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'wall_pattern.png'),
-                dpi=200, bbox_inches='tight')
-    plt.close(fig)
-    print(f'[Plot] Saved: {output_dir}/wall_pattern.png')
-
-
 def main():
     output_dir = os.path.join(ROOT, 'results', 'diagnostics')
     os.makedirs(output_dir, exist_ok=True)
@@ -259,9 +203,6 @@ def main():
     }
     with open(os.path.join(output_dir, 'wall_pattern.json'), 'w') as f:
         json.dump(summary, f, indent=2)
-
-    # ── Plots ──
-    make_plots(rb_results, cyl_results, output_dir)
 
     print(f'\nResults saved to: {output_dir}/')
 

@@ -96,7 +96,7 @@ def sample_action(params, obs, key):
     # Log probability (with tanh correction)
     log_prob = _gaussian_log_prob(action_raw, mean, log_std)
     log_prob = log_prob - jnp.sum(jnp.log(1 - action ** 2 + 1e-6), axis=-1)
-    return action, log_prob, mean
+    return action, log_prob, mean, action_raw
 
 
 def _gaussian_log_prob(x, mean, log_std):
@@ -108,11 +108,14 @@ def _gaussian_log_prob(x, mean, log_std):
     )
 
 
-def evaluate_action(params, obs, action):
+def evaluate_action(params, obs, action_raw):
     """Compute log_prob and entropy for a given action (for PPO update)."""
     mean, log_std = actor_forward(params, obs)
-    # Inverse tanh to get raw action
-    action_raw = jnp.arctanh(jnp.clip(action, -0.999, 0.999))
+    # Log-probability of the stored pre-squash sample, so that the PPO ratio is exactly 1 at
+    # theta = theta_old.  (Reconstructing it by inverse tanh of the clipped squashed action
+    # differed from the sample for |u| > 3.8 and drove the ratio, and with it the
+    # clipped-objective gradient, to zero once the policy saturated.)
+    action = jnp.tanh(action_raw)
     log_prob = _gaussian_log_prob(action_raw, mean, log_std)
     log_prob = log_prob - jnp.sum(jnp.log(1 - action ** 2 + 1e-6), axis=-1)
     # Entropy of Gaussian (before tanh — approximation)
@@ -183,138 +186,6 @@ def save_flow_snapshot_ppo(state, grid, label, output_dir):
         xv=np.array(xv), yv=np.array(yv),
         label=label,
     )
-
-
-def save_flow_image_ppo(state, grid, label, output_dir, cfg_body=None):
-    """Save vorticity + pressure contour images with cylinder overlay."""
-    try:
-        import matplotlib
-        matplotlib.use('Agg')
-        import matplotlib.pyplot as plt
-    except ImportError:
-        return
-
-    img_dir = os.path.join(output_dir, 'images')
-    os.makedirs(img_dir, exist_ok=True)
-
-    u, v = state.velocity
-    omega = np.array(vorticity_2d((u, v), grid))
-    p = np.array(state.pressure)
-
-    xc, yc = grid.cell_centers()
-    xc, yc = np.array(xc), np.array(yc)
-
-    fig, axes = plt.subplots(2, 1, figsize=(16, 6), dpi=100)
-
-    # Vorticity
-    vmax = min(5.0, float(np.percentile(np.abs(omega), 99)))
-    ax = axes[0]
-    im = ax.pcolormesh(xc, yc, omega.T, cmap='RdBu_r', vmin=-vmax, vmax=vmax,
-                       shading='auto')
-    if cfg_body:
-        theta = np.linspace(0, 2*np.pi, 100)
-        cx, cy, R = cfg_body['center'][0], cfg_body['center'][1], cfg_body['radius']
-        ax.fill(cx + R*np.cos(theta), cy + R*np.sin(theta), 'white', zorder=5)
-        ax.plot(cx + R*np.cos(theta), cy + R*np.sin(theta), 'k-', lw=1.5, zorder=6)
-    ax.set_xlim(0, float(xc[-1]))
-    ax.set_ylim(float(yc[0]), float(yc[-1]))
-    ax.set_aspect('equal')
-    ax.set_title(f'Vorticity  (Update {label})')
-    plt.colorbar(im, ax=ax, shrink=0.6)
-
-    # Pressure
-    ax = axes[1]
-    pmax = float(np.percentile(np.abs(p), 98))
-    if pmax < 1e-10:
-        pmax = 1.0
-    im = ax.pcolormesh(xc, yc, p.T, cmap='coolwarm', vmin=-pmax, vmax=pmax,
-                       shading='auto')
-    if cfg_body:
-        ax.fill(cx + R*np.cos(theta), cy + R*np.sin(theta), 'white', zorder=5)
-        ax.plot(cx + R*np.cos(theta), cy + R*np.sin(theta), 'k-', lw=1.5, zorder=6)
-    ax.set_xlim(0, float(xc[-1]))
-    ax.set_ylim(float(yc[0]), float(yc[-1]))
-    ax.set_aspect('equal')
-    ax.set_title(f'Pressure  (Update {label})')
-    plt.colorbar(im, ax=ax, shrink=0.6)
-
-    plt.tight_layout()
-    plt.savefig(os.path.join(img_dir, f'fields_update_{label:04d}.png'),
-                bbox_inches='tight')
-    plt.close(fig)
-
-
-def save_ppo_training_curves(history, output_dir):
-    """Generate training curve plots."""
-    try:
-        import matplotlib
-        matplotlib.use('Agg')
-        import matplotlib.pyplot as plt
-    except ImportError:
-        return
-
-    fig, axes = plt.subplots(3, 2, figsize=(14, 12))
-    updates = history['update']
-
-    # Cd mean with envelope
-    ax = axes[0, 0]
-    ax.plot(updates, history['cd_mean'], 'b-', lw=1.5, label='Cd (mean)')
-    ax.axhline(history['cd_baseline'], color='r', ls='--', lw=1, label='Cd baseline')
-    if history.get('cd_min'):
-        ax.fill_between(updates, history['cd_min'], history['cd_max'],
-                        alpha=0.2, color='b', label='Cd (min-max)')
-    ax.set_xlabel('Update')
-    ax.set_ylabel('Cd')
-    ax.set_title('Drag Coefficient')
-    ax.legend()
-    ax.grid(True, alpha=0.3)
-
-    # Policy loss
-    ax = axes[0, 1]
-    ax.plot(updates, history['policy_loss'], 'r-', lw=1.5)
-    ax.set_xlabel('Update')
-    ax.set_ylabel('Policy Loss')
-    ax.set_title('Policy Loss')
-    ax.grid(True, alpha=0.3)
-
-    # Value loss
-    ax = axes[1, 0]
-    ax.plot(updates, history['value_loss'], 'g-', lw=1.5)
-    ax.set_xlabel('Update')
-    ax.set_ylabel('Value Loss')
-    ax.set_title('Value Loss')
-    ax.grid(True, alpha=0.3)
-
-    # Entropy
-    ax = axes[1, 1]
-    ax.plot(updates, history['entropy'], 'k-', lw=1.5)
-    ax.set_xlabel('Update')
-    ax.set_ylabel('Entropy')
-    ax.set_title('Policy Entropy')
-    ax.grid(True, alpha=0.3)
-
-    # Mean return
-    ax = axes[2, 0]
-    ax.plot(updates, history['mean_return'], 'purple', lw=1.5)
-    ax.set_xlabel('Update')
-    ax.set_ylabel('Return')
-    ax.set_title('Mean Episode Return')
-    ax.grid(True, alpha=0.3)
-
-    # Drag reduction %
-    ax = axes[2, 1]
-    ax.plot(updates, history['reduction_pct'], 'b-', lw=1.5)
-    ax.axhline(0, color='gray', ls='--', lw=0.8)
-    ax.set_xlabel('Update')
-    ax.set_ylabel('Reduction (%)')
-    ax.set_title('Drag Reduction')
-    ax.grid(True, alpha=0.3)
-
-    plt.suptitle('PPO Training Curves', fontsize=14, fontweight='bold')
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'training_curves.png'),
-                dpi=150, bbox_inches='tight')
-    plt.close(fig)
 
 
 def _save_ppo_history(history, output_dir):
@@ -428,9 +299,9 @@ def collect_multi_episode_rollout(env, params, state, n_episodes,
             value = float(critic_forward(params, obs))
             ep_values.append(value)
 
-            action, log_prob, _ = sample_action(params, obs, subkey)
+            action, log_prob, _, action_raw = sample_action(params, obs, subkey)
             action_scalar = float(action[0])
-            ep_actions.append(action)
+            ep_actions.append(action_raw)          # pre-squash sample, used by evaluate_action
             ep_log_probs.append(float(log_prob))
 
             state, obs, reward, info = env.step_no_scan(state, action_scalar)
@@ -591,7 +462,6 @@ def train(env_cfg, ppo_cfg):
 
     # ── Training loop ──
     snapshot_every = ppo_cfg.get('snapshot_every', 10)
-    cfg_body = {'center': [env_cfg['cx'], env_cfg['cy']], 'radius': env_cfg['R']}
 
     history = {
         # Metadata
@@ -625,8 +495,6 @@ def train(env_cfg, ppo_cfg):
 
     # Save baseline flow snapshot
     save_flow_snapshot_ppo(state, env.grid, label=-1, output_dir=output_dir)
-    save_flow_image_ppo(state, env.grid, label=-1, output_dir=output_dir,
-                        cfg_body=cfg_body)
 
     for update in range(n_updates):
         t_update = time.time()
@@ -712,12 +580,10 @@ def train(env_cfg, ppo_cfg):
                           for j, v in enumerate(layer)}
             np.savez(ckpt_path, **flat_params)
 
-        # Save flow snapshot + image
+        # Save flow snapshot
         if (update + 1) % snapshot_every == 0 or update == n_updates - 1:
             save_flow_snapshot_ppo(state, env.grid, update+1, output_dir)
-            save_flow_image_ppo(state, env.grid, update+1, output_dir,
-                                cfg_body=cfg_body)
-            print(f"  [Saved flow snapshot + image: update {update+1}]")
+            print(f"  [Saved flow snapshot: update {update+1}]")
 
         # Crash-safe incremental history save
         if (update + 1) % 5 == 0 or update == n_updates - 1:
@@ -749,9 +615,6 @@ def train(env_cfg, ppo_cfg):
                   for j, v in enumerate(layer)}
     np.savez(os.path.join(ckpt_dir, 'final.npz'), **flat_params)
 
-    # Training curves
-    save_ppo_training_curves(history, output_dir)
-    print(f"  Training curves: {output_dir}/training_curves.png")
     print(f"  History:         {output_dir}/history.json")
 
     return params, history

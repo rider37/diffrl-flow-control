@@ -7,7 +7,7 @@ per-IC last-half means stored by scripts/evaluate/rayleigh_benard_heldout.py and
 scripts/evaluate/cylinder_heldout.py, so no policy is re-run.  Reductions are positive
 for a decrease of Nu or Cd; per seed they are averaged over the five ICs.
 Writes results/statistics/heldout_statistics.json and
-results/figure_data/fig09b_reductions.json (input of Fig. 9b).
+results/figure_data/heldout_reductions_per_seed.json (input of Fig. 11b).
 """
 import os
 import sys
@@ -64,7 +64,7 @@ for Re in ('100', '200', '400', '500'):
 print('obsnorm PPO 1e6', out['rb']['1e6']['ppo_obsnorm'])
 json.dump(out, open('results/statistics/heldout_statistics.json', 'w'), indent=1)
 os.makedirs('results/figure_data', exist_ok=True)
-json.dump(fig, open('results/figure_data/fig09b_reductions.json', 'w'), indent=1)
+json.dump(fig, open('results/figure_data/heldout_reductions_per_seed.json', 'w'), indent=1)
 for k, v in out.items():
     for c, o in v.items():
         w = o['welch_shac_minus_ppo']

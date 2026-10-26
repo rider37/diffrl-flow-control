@@ -124,7 +124,7 @@ def main():
             controller = make_neural_controller(env, params['actor'], n_seg)
 
             print(f"  {algo} (5 ICs):")
-            results[ra].setdefault('checkpoints', {})[algo] = ck
+            results[ra].setdefault('checkpoints', {})[algo] = os.path.relpath(ck, ROOT)
             per_ic_data = []
             for ic_idx, ic in enumerate(TEST_ICS):
                 t0 = time.time()

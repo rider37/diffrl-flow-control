@@ -11,7 +11,9 @@ Final checkpoints (seeds 42 123 456 517 1223, interface eps = 0.75):
   runs/cylinder/{shac,ppo}_re{Re}_s{seed}/checkpoints/final.npz
 
 Usage: python scripts/evaluate/cylinder_heldout.py [--Re 100 200 400 500] [--algo shac ppo] [--seeds ...]
-Writes results/evaluation/cylinder_heldout.json: {Re: {algo: {seed: {ckpt, cd_ctrl_per_ic}}}}
+                                                    [--checkpoint epoch_0020]
+Writes results/evaluation/cylinder_heldout.json: {Re: {algo: {seed: {ckpt, cd_ctrl_per_ic}}}};
+a checkpoint other than final.npz is stored under the key algo@<checkpoint>.
 """
 import os
 import sys
@@ -31,8 +33,8 @@ from diffrl_flow_control.cylinder.heldout import build_perturbed_ic, load_actor,
 OUT = 'results/evaluation/cylinder_heldout.json'
 
 
-def ckpt(Re, algo, s):
-    return f'runs/cylinder/{algo}_re{Re}_s{s}/checkpoints/final.npz'
+def ckpt(Re, algo, s, name='final'):
+    return f'runs/cylinder/{algo}_re{Re}_s{s}/checkpoints/{name}.npz'
 
 
 def main():
@@ -40,7 +42,9 @@ def main():
     ap.add_argument('--Re', type=int, nargs='+', default=sorted(RE_GRID))
     ap.add_argument('--algo', nargs='+', default=['shac', 'ppo'])
     ap.add_argument('--seeds', nargs='+', type=int, default=SEEDS)
+    ap.add_argument('--checkpoint', default='final', help='checkpoint name, e.g. epoch_0010 (default: final)')
     a = ap.parse_args()
+    key = (lambda al: al) if a.checkpoint == 'final' else (lambda al: f'{al}@{a.checkpoint}')
     out = json.load(open(OUT)) if os.path.exists(OUT) else {}
     act_fn = jax.jit(lambda p, o: jnp.tanh(mlp_forward_relu(p, o)[:1]))
     for Re in a.Re:
@@ -48,7 +52,7 @@ def main():
         cfg['soft_reset_prob'] = 0.0; cfg['obs_type'] = 'velocity'
         env = CylinderFlowEnv(cfg)
         warmup = int(env.warmup_steps); ai = int(env.action_interval); ema = float(env.ema_alpha)
-        actors = {(al, s): load_actor(ckpt(Re, al, s)) for al in a.algo for s in a.seeds}
+        actors = {(al, s): load_actor(ckpt(Re, al, s, a.checkpoint)) for al in a.algo for s in a.seeds}
         print(f"\n=== Re={Re} grid={RE_GRID[Re]} warmup={warmup} action interval={ai} ===", flush=True)
         cd = {k: [] for k in actors}
         for ic in TEST_POOL:
@@ -67,7 +71,7 @@ def main():
                 cd[k].append(float(np.mean(c[EPISODE_ACTIONS // 2:])))
             print(f"  IC{ic} done [{(time.time()-t0)/60:.1f} min]", flush=True)
         for (al, s), v in cd.items():
-            out.setdefault(str(Re), {}).setdefault(al, {})[str(s)] = {'ckpt': ckpt(Re, al, s), 'cd_ctrl_per_ic': v}
+            out.setdefault(str(Re), {}).setdefault(key(al), {})[str(s)] = {'ckpt': ckpt(Re, al, s, a.checkpoint), 'cd_ctrl_per_ic': v}
         os.makedirs('results', exist_ok=True)
         json.dump(out, open(OUT, 'w'), indent=1)
     print(f"Saved {OUT}")

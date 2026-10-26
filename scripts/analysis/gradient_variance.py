@@ -1,4 +1,4 @@
-"""Gradient-estimator variance at the trained SHAC policies (Fig. 9a, Section 5.2).
+"""Gradient-estimator variance at the trained SHAC policies (Fig. 11a, Section 5.2).
 
 At the final SHAC checkpoint of each Ra (training seed 1223) and a fixed exploration standard deviation, the gradient of the
 expected return is estimated on the same K sampled trajectories by

@@ -1,4 +1,4 @@
-"""Pathwise-gradient variance against the differentiated horizon (Fig. 9c).
+"""Pathwise-gradient variance against the differentiated horizon (Fig. 11c).
 
 At the final SHAC checkpoint of each Ra (training seed 1223), the relative variance
 of the pathwise gradient is measured over K trajectories for horizons of 5 to 160

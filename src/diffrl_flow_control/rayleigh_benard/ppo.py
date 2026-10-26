@@ -113,7 +113,7 @@ def sample_action(params, obs, key):
     action = jnp.tanh(action_raw)
     log_prob = _gaussian_log_prob(action_raw, mean, log_std)
     log_prob = log_prob - jnp.sum(jnp.log(1 - action ** 2 + 1e-6), axis=-1)
-    return action, log_prob, mean
+    return action, log_prob, mean, action_raw
 
 
 def _gaussian_log_prob(x, mean, log_std):
@@ -124,9 +124,13 @@ def _gaussian_log_prob(x, mean, log_std):
     )
 
 
-def evaluate_action(params, obs, action):
+def evaluate_action(params, obs, action_raw):
     mean, log_std = actor_forward(params, obs)
-    action_raw = jnp.arctanh(jnp.clip(action, -0.999, 0.999))
+    # Log-probability of the stored pre-squash sample, so that the PPO ratio is exactly 1 at
+    # theta = theta_old.  (Reconstructing it by inverse tanh of the clipped squashed action
+    # differed from the sample for |u| > 3.8 and drove the ratio, and with it the
+    # clipped-objective gradient, to zero once the policy saturated.)
+    action = jnp.tanh(action_raw)
     log_prob = _gaussian_log_prob(action_raw, mean, log_std)
     log_prob = log_prob - jnp.sum(jnp.log(1 - action ** 2 + 1e-6), axis=-1)
     entropy = jnp.sum(log_std + 0.5 * jnp.log(2 * jnp.pi * jnp.e), axis=-1)
@@ -175,85 +179,6 @@ def save_flow_snapshot(state, grid, label, output_dir):
         T=T, u=u, v=v, p=p,
         xc=np.array(xc), yc=np.array(yc), label=label,
     )
-
-
-def save_flow_image(state, grid, label, output_dir):
-    try:
-        import matplotlib
-        matplotlib.use('Agg')
-        import matplotlib.pyplot as plt
-    except ImportError:
-        return
-
-    img_dir = os.path.join(output_dir, 'images')
-    os.makedirs(img_dir, exist_ok=True)
-
-    T = np.array(state.scalars['T'])
-    xc, yc = grid.cell_centers()
-    xc, yc = np.array(xc), np.array(yc)
-
-    fig, ax = plt.subplots(1, 1, figsize=(12, 4), dpi=100)
-    im = ax.pcolormesh(xc, yc, T.T, cmap='RdBu_r', vmin=0, vmax=1, shading='auto')
-    ax.set_aspect('equal')
-    ax.set_title(f'Temperature (Update {label})')
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    plt.colorbar(im, ax=ax, shrink=0.8)
-    plt.tight_layout()
-    plt.savefig(os.path.join(img_dir, f'T_update_{label:04d}.png'), bbox_inches='tight')
-    plt.close(fig)
-
-
-def save_training_curves(history, output_dir):
-    try:
-        import matplotlib
-        matplotlib.use('Agg')
-        import matplotlib.pyplot as plt
-    except ImportError:
-        return
-
-    fig, axes = plt.subplots(3, 2, figsize=(14, 12))
-    updates = history['update']
-
-    ax = axes[0, 0]
-    ax.plot(updates, history['nu_mean'], 'b-', lw=1.5, label='Nu (mean)')
-    ax.axhline(history['nu_baseline'], color='r', ls='--', lw=1, label='Nu baseline')
-    if history.get('nu_min'):
-        ax.fill_between(updates, history['nu_min'], history['nu_max'],
-                        alpha=0.2, color='b')
-    ax.set_xlabel('Update'); ax.set_ylabel('Nu')
-    ax.set_title('Nusselt Number'); ax.legend(); ax.grid(True, alpha=0.3)
-
-    ax = axes[0, 1]
-    ax.plot(updates, history['policy_loss'], 'r-', lw=1.5)
-    ax.set_xlabel('Update'); ax.set_ylabel('Policy Loss')
-    ax.set_title('Policy Loss'); ax.grid(True, alpha=0.3)
-
-    ax = axes[1, 0]
-    ax.plot(updates, history['value_loss'], 'g-', lw=1.5)
-    ax.set_xlabel('Update'); ax.set_ylabel('Value Loss')
-    ax.set_title('Value Loss'); ax.grid(True, alpha=0.3)
-
-    ax = axes[1, 1]
-    ax.plot(updates, history['entropy'], 'k-', lw=1.5)
-    ax.set_xlabel('Update'); ax.set_ylabel('Entropy')
-    ax.set_title('Policy Entropy'); ax.grid(True, alpha=0.3)
-
-    ax = axes[2, 0]
-    ax.plot(updates, history['mean_return'], 'purple', lw=1.5)
-    ax.set_xlabel('Update'); ax.set_ylabel('Return')
-    ax.set_title('Mean Episode Return'); ax.grid(True, alpha=0.3)
-
-    ax = axes[2, 1]
-    ax.plot(updates, history['reduction_pct'], 'b-', lw=1.5)
-    ax.axhline(0, color='gray', ls='--', lw=0.8)
-    ax.set_xlabel('Update'); ax.set_ylabel('Reduction (%)')
-    ax.set_title('Nu Reduction'); ax.grid(True, alpha=0.3)
-
-    plt.suptitle('PPO Training Curves (RB Control)', fontsize=14, fontweight='bold')
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'training_curves.png'), dpi=150, bbox_inches='tight')
-    plt.close(fig)
 
 
 def _save_history(history, output_dir):
@@ -355,9 +280,9 @@ def collect_rollout(env, params, state, n_episodes, episode_length, key,
             value = float(critic_forward(params, obs))
             ep_values.append(value)
 
-            action, log_prob, _ = sample_action(params, obs, subkey)
+            action, log_prob, _, action_raw = sample_action(params, obs, subkey)
             action_np = np.array(action)
-            ep_actions.append(action)
+            ep_actions.append(action_raw)          # pre-squash sample, used by evaluate_action
             ep_log_probs.append(float(log_prob))
 
             state, obs, reward, info = env.step_no_scan(state, action_np)
@@ -524,7 +449,6 @@ def train(env_cfg, ppo_cfg):
     t_start = time.time()
 
     save_flow_snapshot(state, env.grid, label=-1, output_dir=output_dir)
-    save_flow_image(state, env.grid, label=-1, output_dir=output_dir)
 
     for update in range(n_updates):
         t_update = time.time()
@@ -601,7 +525,6 @@ def train(env_cfg, ppo_cfg):
 
         if (update + 1) % snapshot_every == 0 or update == n_updates - 1:
             save_flow_snapshot(state, env.grid, update+1, output_dir)
-            save_flow_image(state, env.grid, update+1, output_dir)
 
         if (update + 1) % 5 == 0 or update == n_updates - 1:
             _save_history(history, output_dir)
@@ -625,5 +548,4 @@ def train(env_cfg, ppo_cfg):
     print(f"{'='*70}")
 
     _save_history(history, output_dir)
-    save_training_curves(history, output_dir)
     return params, history

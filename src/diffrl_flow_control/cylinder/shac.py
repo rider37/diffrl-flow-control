@@ -139,11 +139,12 @@ def shac_actor_loss(actor_params, critic_params, state0,
     #   r = -(mean Cd - Cd0) - cl_weight * |mean Cl|
     rewards = -(cds - cd_baseline) - cl_weight * jnp.abs(cls)
 
-    # Critic value at terminal state (stop gradient — critic is fixed)
+    # Critic value at the terminal state.  As in Xu et al. (2022), V(s_h) is
+    # differentiated through s_h, so the actor gradient contains the
+    # terminal-value path; the critic parameters are fixed during the actor
+    # step because the gradient is taken w.r.t. actor_params only (argnums=0).
     obs_h = get_obs_fn(state_h)
-    V_h = jax.lax.stop_gradient(
-        critic_forward({'critic': critic_params}, obs_h)
-    )
+    V_h = critic_forward({'critic': critic_params}, obs_h)
 
     # Discounted return
     gammas = gamma ** jnp.arange(h)
@@ -165,7 +166,7 @@ def shac_actor_loss(actor_params, critic_params, state0,
         'obs_h': obs_h,
         'state_h': state_h,
         'q_h': q_h,
-        'V_h': V_h,
+        'V_h': jax.lax.stop_gradient(V_h),
         'return': discounted_return,
     }
     return loss, aux

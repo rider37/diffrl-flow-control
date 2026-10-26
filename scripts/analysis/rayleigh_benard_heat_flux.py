@@ -1,9 +1,9 @@
-"""Data of Fig. 8: heat flux and wall actuation at Ra = 1e6.
+"""Data of Fig. 10: heat flux and wall actuation at Ra = 1e6.
 
 The uncontrolled flow and the final PPO and SHAC policies (training seed 42) run
 for 600 actions from held-out IC seed 100.  Saves the Nu(t) series, the action
 norms |a(t)| and their Welch spectra.
-Writes results/figure_data/fig08_heat_flux.npz and fig08_heat_flux.json.
+Writes results/figure_data/rayleigh_benard_heat_flux_ra1e6.npz and rayleigh_benard_heat_flux_ra1e6.json.
 """
 import os
 import sys
@@ -125,15 +125,15 @@ for label, x in [('baseline', nu_bl_t), ('PPO', nu_ppo_t), ('SHAC', nu_shac_t)]:
     m = float(np.mean(x[cut:]))
     print(f'  {label}: Nu={m:.3f}  (red={(1-m/nu_bl_mean)*100:+.2f}%)')
 
-# ── spectra (the figure itself is figures/fig08_heat_flux.py) ─
+# ── spectra ─
 CPC_FIG = os.path.join(ROOT, 'results/figure_data')
 os.makedirs(CPC_FIG, exist_ok=True)
-np.savez(os.path.join(CPC_FIG, 'fig08_heat_flux.npz'),
+np.savez(os.path.join(CPC_FIG, 'rayleigh_benard_heat_flux_ra1e6.npz'),
          f_bl=f_bl, P_bl=P_bl, f_ppo=f_ppo, P_ppo=P_ppo, f_shac=f_shac, P_shac=P_shac,
          fa_ppo=fa_ppo, Pa_ppo=Pa_ppo, fa_shac=fa_shac, Pa_shac=Pa_shac,
          nu_bl_t=nu_bl_t, nu_ppo_t=nu_ppo_t, nu_shac_t=nu_shac_t,
          mag_ppo=mag_ppo, mag_shac=mag_shac, dt_ctrl=dt_ctrl)
-print('  Saved: results/figure_data/fig08_heat_flux.npz')
+print('  Saved: results/figure_data/rayleigh_benard_heat_flux_ra1e6.npz')
 
 # ── Save numerics ────────────────────────────────────────────────────
 out = {
@@ -146,6 +146,6 @@ out = {
         'SHAC':     float(np.mean(nu_shac_t[int(0.2*len(nu_shac_t)):])),
     },
 }
-with open('results/figure_data/fig08_heat_flux.json', 'w') as f:
+with open('results/figure_data/rayleigh_benard_heat_flux_ra1e6.json', 'w') as f:
     json.dump(out, f, indent=2)
-print('  Saved: results/figure_data/fig08_heat_flux.json')
+print('  Saved: results/figure_data/rayleigh_benard_heat_flux_ra1e6.json')

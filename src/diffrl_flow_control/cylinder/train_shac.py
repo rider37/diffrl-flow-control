@@ -55,66 +55,6 @@ def save_flow_snapshot(state, grid, epoch, output_dir):
     )
 
 
-def save_flow_image(state, grid, epoch, output_dir, cfg_body=None):
-    """Save vorticity + pressure contour images."""
-    try:
-        import matplotlib
-        matplotlib.use('Agg')
-        import matplotlib.pyplot as plt
-    except ImportError:
-        return  # skip if no matplotlib
-
-    img_dir = os.path.join(output_dir, 'images')
-    os.makedirs(img_dir, exist_ok=True)
-
-    u, v = state.velocity
-    omega = np.array(vorticity_2d((u, v), grid))
-    p = np.array(state.pressure)
-
-    xc, yc = grid.cell_centers()
-    xc, yc = np.array(xc), np.array(yc)
-
-    # ── Vorticity field ──
-    fig, axes = plt.subplots(2, 1, figsize=(16, 6), dpi=100)
-
-    vmax = min(5.0, float(np.percentile(np.abs(omega), 99)))
-    ax = axes[0]
-    im = ax.pcolormesh(xc, yc, omega.T, cmap='RdBu_r', vmin=-vmax, vmax=vmax,
-                       shading='auto')
-    if cfg_body:
-        theta = np.linspace(0, 2*np.pi, 100)
-        cx, cy, R = cfg_body['center'][0], cfg_body['center'][1], cfg_body['radius']
-        ax.plot(cx + R*np.cos(theta), cy + R*np.sin(theta), 'k-', lw=1.5)
-        ax.fill(cx + R*np.cos(theta), cy + R*np.sin(theta), 'white', zorder=5)
-        ax.plot(cx + R*np.cos(theta), cy + R*np.sin(theta), 'k-', lw=1.5, zorder=6)
-    ax.set_xlim(0, float(xc[-1]))
-    ax.set_ylim(float(yc[0]), float(yc[-1]))
-    ax.set_aspect('equal')
-    ax.set_title(f'Vorticity  (Epoch {epoch})')
-    plt.colorbar(im, ax=ax, shrink=0.6)
-
-    # ── Pressure field ──
-    ax = axes[1]
-    pmax = float(np.percentile(np.abs(p), 98))
-    if pmax < 1e-10:
-        pmax = 1.0
-    im = ax.pcolormesh(xc, yc, p.T, cmap='coolwarm', vmin=-pmax, vmax=pmax,
-                       shading='auto')
-    if cfg_body:
-        ax.fill(cx + R*np.cos(theta), cy + R*np.sin(theta), 'white', zorder=5)
-        ax.plot(cx + R*np.cos(theta), cy + R*np.sin(theta), 'k-', lw=1.5, zorder=6)
-    ax.set_xlim(0, float(xc[-1]))
-    ax.set_ylim(float(yc[0]), float(yc[-1]))
-    ax.set_aspect('equal')
-    ax.set_title(f'Pressure  (Epoch {epoch})')
-    plt.colorbar(im, ax=ax, shrink=0.6)
-
-    plt.tight_layout()
-    plt.savefig(os.path.join(img_dir, f'fields_epoch_{epoch:04d}.png'),
-                bbox_inches='tight')
-    plt.close(fig)
-
-
 def save_params(params, name, output_dir):
     """Save actor and critic parameters as checkpoints/<name>.npz."""
     ckpt_dir = os.path.join(output_dir, 'checkpoints')
@@ -131,87 +71,6 @@ def save_params(params, name, output_dir):
     return path
 
 
-def save_training_curves(history, output_dir):
-    """Generate training curve plots."""
-    try:
-        import matplotlib
-        matplotlib.use('Agg')
-        import matplotlib.pyplot as plt
-    except ImportError:
-        return
-
-    fig, axes = plt.subplots(3, 2, figsize=(14, 12))
-
-    epochs = history['epoch']
-
-    # Cd mean
-    ax = axes[0, 0]
-    ax.plot(epochs, history['cd_mean'], 'b-', lw=1.5, label='Cd (mean)')
-    ax.axhline(history['cd_baseline'], color='r', ls='--', lw=1, label='Cd baseline')
-    if history.get('cd_min'):
-        ax.plot(epochs, history['cd_min'], 'c-', alpha=0.5, lw=0.8, label='Cd (min)')
-        ax.plot(epochs, history['cd_max'], 'm-', alpha=0.5, lw=0.8, label='Cd (max)')
-    ax.set_xlabel('Epoch')
-    ax.set_ylabel('Cd')
-    ax.set_title('Drag Coefficient')
-    ax.legend()
-    ax.grid(True, alpha=0.3)
-
-    # Actor loss
-    ax = axes[0, 1]
-    ax.plot(epochs, history['actor_loss'], 'r-', lw=1.5)
-    ax.set_xlabel('Epoch')
-    ax.set_ylabel('Actor Loss')
-    ax.set_title('Actor Loss')
-    ax.grid(True, alpha=0.3)
-
-    # Critic loss
-    ax = axes[1, 0]
-    ax.plot(epochs, history['critic_loss'], 'g-', lw=1.5)
-    ax.set_xlabel('Epoch')
-    ax.set_ylabel('Critic Loss')
-    ax.set_title('Critic Loss')
-    ax.grid(True, alpha=0.3)
-
-    # Gradient norm
-    ax = axes[1, 1]
-    ax.semilogy(epochs, history['grad_norm'], 'k-', lw=1.5)
-    ax.set_xlabel('Epoch')
-    ax.set_ylabel('|grad|')
-    ax.set_title('Actor Gradient Norm')
-    ax.grid(True, alpha=0.3)
-
-    # Actions
-    ax = axes[2, 0]
-    ax.plot(epochs, history['action_mean'], 'b-', lw=1.5, label='|a| mean')
-    if history.get('action_std'):
-        ax.fill_between(
-            epochs,
-            np.array(history['action_mean']) - np.array(history['action_std']),
-            np.array(history['action_mean']) + np.array(history['action_std']),
-            alpha=0.2,
-        )
-    ax.set_xlabel('Epoch')
-    ax.set_ylabel('|Action|')
-    ax.set_title('Action Magnitude')
-    ax.legend()
-    ax.grid(True, alpha=0.3)
-
-    # Discounted return
-    ax = axes[2, 1]
-    ax.plot(epochs, history['return'], 'purple', lw=1.5)
-    ax.set_xlabel('Epoch')
-    ax.set_ylabel('Return')
-    ax.set_title('Discounted Return')
-    ax.grid(True, alpha=0.3)
-
-    plt.suptitle('SHAC Training Curves', fontsize=14, fontweight='bold')
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'training_curves.png'),
-                dpi=150, bbox_inches='tight')
-    plt.close(fig)
-
-
 # ═══════════════════════════════════════════════════════════════════════
 # Training loop
 # ═══════════════════════════════════════════════════════════════════════
@@ -223,7 +82,7 @@ def train(env_cfg, shac_cfg):
     output_dir = shac_cfg['output_dir']
     os.makedirs(output_dir, exist_ok=True)
 
-    # Snapshot/image save interval (every N epochs)
+    # Snapshot save interval (every N epochs)
     snapshot_every = shac_cfg.get('snapshot_every', 10)
     reset_every = shac_cfg.get('reset_every', 0)  # 0 = no reset
     action_penalty_coef = shac_cfg.get('action_penalty', 0.01)
@@ -242,8 +101,6 @@ def train(env_cfg, shac_cfg):
     # Save baseline flow snapshot
     print('[SHAC] Saving baseline flow snapshot...')
     save_flow_snapshot(state, env.grid, epoch=-1, output_dir=output_dir)
-    cfg_body = {'center': [env_cfg['cx'], env_cfg['cy']], 'radius': env_cfg['R']}
-    save_flow_image(state, env.grid, epoch=-1, output_dir=output_dir, cfg_body=cfg_body)
 
     # ── 2. SHAC step function (wraps CFD + jet forces) ────────────────
     shac_step_fn = make_jet_step_fn(env.step_fn)
@@ -484,11 +341,10 @@ def train(env_cfg, shac_cfg):
             np.savez(os.path.join(ckpt_dir, 'best.npz'),
                      epoch=epoch, cd=cd_mean, **flat_actor, **flat_critic)
 
-        # ── Save flow snapshots + images ──
+        # ── Save flow snapshots ──
         if epoch % snapshot_every == 0 or epoch == shac_cfg['n_epochs'] - 1:
             save_flow_snapshot(state, env.grid, epoch, output_dir)
-            save_flow_image(state, env.grid, epoch, output_dir, cfg_body=cfg_body)
-            print(f'  [Saved flow snapshot + image: epoch {epoch}]')
+            print(f'  [Saved flow snapshot: epoch {epoch}]')
 
         # ── Save checkpoint ──
         if (epoch + 1) % shac_cfg['save_every'] == 0:
@@ -511,8 +367,6 @@ def train(env_cfg, shac_cfg):
     # Final saves
     _save_history(history, output_dir)
     save_params(params, 'final', output_dir)
-    save_training_curves(history, output_dir)
-    print(f'  Training curves: {output_dir}/training_curves.png')
     print(f'  History:         {output_dir}/history.json')
 
     return params, history

@@ -2,8 +2,7 @@
 coefficient and Strouhal number over 45 000 steps (150 convective time units)
 after the environment warm-up, and the jet momentum coefficient C_mu at full
 actuation.  Configuration: configs/cylinder/env_re100.json (interface eps = 0.75).
-Writes results/checks/cylinder_validation.json and
-results/checks/cylinder_validation_series.npz.
+Writes results/checks/cylinder_validation.json.
 """
 import os
 import sys
@@ -31,7 +30,6 @@ for i in range(N):
 cds = np.array(cds); cls = np.array(cls)
 f = np.fft.rfftfreq(N, dt); P = np.abs(np.fft.rfft(cls - cls.mean())) ** 2; St = f[np.argmax(P[1:]) + 1]
 os.makedirs('results/checks', exist_ok=True)
-np.savez('results/checks/cylinder_validation_series.npz', cd=cds, cl=cls, dt=dt)
 # jet momentum coefficient at |a| = 1: C_mu = 2 int u_j^2 ds / (U_inf^2 D) along the surface
 sig = cfg['jet_width']; Q = cfg['Q_max']; R = cfg['R']; D = 2 * R
 th = np.linspace(-np.pi, np.pi, 200001); d = 2 * R * np.sin(np.abs(th) / 2)

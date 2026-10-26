@@ -290,65 +290,6 @@ def analyze_horizon_sweep(env_cfg, shac_cfg, horizons=[5, 10, 20, 50]):
     }
 
 
-def make_plots(cosine_results, horizon_results, output_dir):
-    """Generate Fig 7: gradient quality plots."""
-    try:
-        import matplotlib
-        matplotlib.use('Agg')
-        import matplotlib.pyplot as plt
-    except ImportError:
-        print('[WARN] matplotlib not available, skipping plots')
-        return
-
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-
-    # ── Panel (a): Cosine similarity vs Ra ──
-    ax = axes[0]
-    ra_vals = []
-    cos_means = []
-    cos_stds = []
-    for r in cosine_results:
-        ra_vals.append(r['Ra'])
-        cos_means.append(r['mean_cosine_sim'])
-        cos_stds.append(r['std_cosine_sim'])
-
-    ax.errorbar(range(len(ra_vals)), cos_means, yerr=cos_stds,
-                fmt='o-', capsize=5, markersize=8, lw=2, color='#2196F3')
-    ax.set_xticks(range(len(ra_vals)))
-    ax.set_xticklabels([f'$10^{{{int(np.log10(ra))}}}$' for ra in ra_vals])
-    ax.set_xlabel('Ra', fontsize=12)
-    ax.set_ylabel('Cosine Similarity (AD vs FD)', fontsize=12)
-    ax.set_ylim(0, 1.05)
-    ax.set_title('(a) Gradient Accuracy vs Turbulence', fontsize=13)
-    ax.grid(True, alpha=0.3)
-    ax.axhline(0.9, color='gray', ls='--', alpha=0.5, label='0.9 threshold')
-    ax.legend()
-
-    # ── Panel (b): Cosine similarity vs horizon ──
-    ax = axes[1]
-    colors = ['#4CAF50', '#FF9800', '#F44336']
-    for i, hr in enumerate(horizon_results):
-        ra = hr['Ra']
-        hs = [r['horizon'] for r in hr['results']]
-        cs = [r['cosine_similarity'] for r in hr['results']]
-        label = f'Ra=$10^{{{int(np.log10(ra))}}}$'
-        ax.plot(hs, cs, 'o-', color=colors[i % len(colors)],
-                label=label, markersize=8, lw=2)
-
-    ax.set_xlabel('Rollout Horizon h', fontsize=12)
-    ax.set_ylabel('Cosine Similarity', fontsize=12)
-    ax.set_ylim(0, 1.05)
-    ax.set_title('(b) Effective Horizon', fontsize=13)
-    ax.grid(True, alpha=0.3)
-    ax.legend()
-
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'ad_fd.png'),
-                dpi=200, bbox_inches='tight')
-    plt.close(fig)
-    print(f'[Plot] Saved: {output_dir}/ad_fd.png')
-
-
 def main():
     parser = argparse.ArgumentParser(
         description='Gradient quality analysis (SHAC AD vs FD)')
@@ -393,9 +334,6 @@ def main():
 
     with open(os.path.join(output_dir, 'ad_fd_horizon.json'), 'w') as f:
         json.dump(horizon_results, f, indent=2)
-
-    # ── 3. Generate Fig 7 ──
-    make_plots(cosine_results, horizon_results, output_dir)
 
     # ── Summary ──
     print('\n' + '=' * 70)

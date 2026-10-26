@@ -1,10 +1,10 @@
-"""Temperature fields of Fig. 6.
+"""Temperature fields of Fig. 8.
 
 For each Ra the uncontrolled flow and the final PPO and SHAC policies (training
 seed 1223) run from held-out IC seed 100 with the same warm-up and number of control
-actions; the fields are saved for figures/make_fig6_temp_grid.py.
+actions.
 Run one Ra per process:  python scripts/analysis/rayleigh_benard_fields.py <1e4|1e5|1e6>
-Writes results/figure_data/fig06_temperature_ra{Ra}.npz.
+Writes results/figure_data/rayleigh_benard_temperature_ra{Ra}.npz.
 """
 import os
 import sys
@@ -69,5 +69,5 @@ xc, yc = env.grid.cell_centers()
 save = {'xc': np.asarray(xc), 'yc': np.asarray(yc)}
 for k, (avg, fin) in res.items():
     save[k] = fin; save[f'{k}_avg'] = avg
-np.savez(f'results/figure_data/fig06_temperature_ra{RA}.npz', **save)
-print(f'[rb-timeavg] saved fig06_temperature_ra{RA}.npz (instantaneous + avg)', flush=True)
+np.savez(f'results/figure_data/rayleigh_benard_temperature_ra{RA}.npz', **save)
+print(f'[rb-timeavg] saved rayleigh_benard_temperature_ra{RA}.npz (instantaneous + avg)', flush=True)

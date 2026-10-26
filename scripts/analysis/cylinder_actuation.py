@@ -1,7 +1,7 @@
-"""Data of Fig. 5: SHAC and PPO action time series a(t) of all five training seeds
+"""Data of Fig. 7: SHAC and PPO action time series a(t) of all five training seeds
 at each Re on the held-out IC 100, from which the representative (median-RMS)
 rollout of each algorithm is plotted, and the per-seed mean |a| and RMS.
-Writes results/figure_data/fig05_cylinder_actuation.npz.
+Writes results/figure_data/cylinder_actuation.npz.
 """
 import os
 import sys
@@ -75,5 +75,5 @@ for Re,(nx,ny) in RE_GRID.items():
         med = int(np.argsort(rms)[len(rms)//2])
         print(f"{algo} Re={Re}: median-RMS seed idx={med} (s{SEEDS[med]}) rms={rms[med]:.3f}  |a|={ma[med]:.3f}", flush=True)
 
-np.savez(f'{ROOT}/results/figure_data/fig05_cylinder_actuation.npz', seeds=np.array(SEEDS), Re=np.array(list(RE_GRID)), **save)
-print("\nsaved fig05_cylinder_actuation.npz", flush=True)
+np.savez(f'{ROOT}/results/figure_data/cylinder_actuation.npz', seeds=np.array(SEEDS), Re=np.array(list(RE_GRID)), **save)
+print("\nsaved cylinder_actuation.npz", flush=True)
