@@ -27,7 +27,7 @@ keywords:
   - Rayleigh-Benard convection
 preferred-citation:
   type: article
-  title: "Sample-efficient reinforcement learning for active flow control via differentiable flow simulation"
+  title: "Sample-efficient reinforcement learning for active flow control with a differentiable Navier–Stokes solver"
   authors:
     - family-names: Kang
       given-names: Jiwon

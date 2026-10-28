@@ -1,6 +1,6 @@
 # diffrl-flow-control
 
-Code for *Sample-efficient reinforcement learning for active flow control via differentiable flow simulation* (Computer Physics Communications, submitted).
+Code for *Sample-efficient reinforcement learning for active flow control with a differentiable Navier–Stokes solver* (Computer Physics Communications, submitted).
 
 It contains a differentiable incompressible Navier–Stokes solver written in JAX and two active-flow-control problems. Each problem is solved with SHAC (policy gradients through the solver) and with PPO, and SHAC is also compared with full-episode backpropagation through time (BPTT) and gradient-informed PPO (GI-PPO):
 
@@ -83,7 +83,7 @@ Example: `python scripts/train.py rayleigh_benard shac ra1e5 --seed 42` writes `
 | Section 5.4 and Table A.2, observation-normalised PPO (Ra = 1e6) | `scripts/evaluate/rayleigh_benard_heldout_obsnorm.py`, `scripts/analysis/observation_scales.py` | `results/evaluation/`, `results/statistics/` |
 | Section 5.1, cylinder forces | `scripts/analysis/cylinder_force_series.py`, `cylinder_force_spectra.py` | `results/statistics/` |
 | Section 5.2 and Fig. 11a,c, gradient variance | `scripts/analysis/gradient_variance.py`, `gradient_variance_horizon.py`, `ppo_gradient_variance.py` | `results/diagnostics/` |
-| Section 4.4, Figs. 5–6 and Appendix G, BPTT and GI-PPO | `scripts/evaluate/*_heldout.py --algo bptt gippo --seeds 42`, GI-PPO within SHAC's CFD budget with `--checkpoint epoch_0010` or `epoch_0020`, and the training-episode runs (see the docstring of `differentiable_methods.py`), then `scripts/analysis/differentiable_methods.py` | `results/statistics/differentiable_methods.json` |
+| Section 4.4, Figs. 5–6 and Appendix G, BPTT and GI-PPO | `scripts/evaluate/*_heldout.py --algo bptt gippo --seeds 42`, GI-PPO within SHAC's CFD budget with `--checkpoint epoch_0010` or `epoch_0020`, and the training-episode runs (see the docstring of `differentiable_methods.py`), then `scripts/analysis/differentiable_methods.py`; training times on the RTX 3090 (Figs. 5c,d and 6b) are measured values, with their definition, in the data | `results/statistics/differentiable_methods.json`, `results/checks/training_time_rtx3090.json` |
 | Section 5.4, PPO saturation | `scripts/analysis/ppo_saturation.py` | `results/statistics/ppo_saturation.json` |
 | Section 5.4, training action interval | `scripts/checks/training_interval_ra1e6.py` | `results/checks/training_interval_ra1e6.json` |
 | Appendix D, time to target | `scripts/analysis/training_cost.py` | `results/statistics/training_cost.json` |
