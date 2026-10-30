@@ -1,6 +1,6 @@
 # diffrl-flow-control
 
-Code for *Accelerating reinforcement learning for active flow control via short-horizon solver gradients* (Computer Physics Communications, submitted).
+Code for *Sample-efficient and stable reinforcement learning for active flow control via short-horizon solver gradients* (Computer Physics Communications, submitted).
 
 It contains a differentiable incompressible Navier–Stokes solver written in JAX and two active-flow-control problems. Each problem is solved with SHAC (policy gradients through the solver) and with PPO, and SHAC is also compared with full-episode backpropagation through time (BPTT) and gradient-informed PPO (GI-PPO):
 

@@ -27,7 +27,7 @@ keywords:
   - Rayleigh-Benard convection
 preferred-citation:
   type: article
-  title: "Accelerating reinforcement learning for active flow control via short-horizon solver gradients"
+  title: "Sample-efficient and stable reinforcement learning for active flow control via short-horizon solver gradients"
   authors:
     - family-names: Kang
       given-names: Jiwon
